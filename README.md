@@ -1,5 +1,9 @@
 # AnnaSetu — AI-Powered Food Rescue Network
 
+[![Live App](https://img.shields.io/badge/Live%20Demo-Vercel-success?style=for-the-badge&logo=vercel)](https://annasetu-ai-powered-food-rescue-d2a.vercel.app)
+
+> 🔗 **Live URL:** [https://annasetu-ai-powered-food-rescue-d2a.vercel.app](https://annasetu-ai-powered-food-rescue-d2a.vercel.app)
+
 AnnaSetu connects surplus food from restaurants, caterers, and events with communities, shelters, and NGOs that need it most. A verified logistics and rescue platform powered by deterministic matching, multimodal AI verification, and secure GPS/OTP handoffs.
 
 ---

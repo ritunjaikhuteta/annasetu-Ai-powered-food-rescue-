@@ -1,5 +1,7 @@
 # AnnaSetu — Frontend Architecture & Supabase Auth (Phase 10)
 
+> 🔗 **Live URL:** [https://annasetu-ai-powered-food-rescue-d2a.vercel.app](https://annasetu-ai-powered-food-rescue-d2a.vercel.app)
+
 AnnaSetu is a verified, need-driven food rescue and logistics marketplace operating with three public roles:
 - **DONOR**: Restaurants, caterers, hotels, supermarkets, corporate cafeterias, and approved food vendors.
 - **RECEIVER**: Verified NGOs and charitable organizations that raise food needs and receive surplus food.
