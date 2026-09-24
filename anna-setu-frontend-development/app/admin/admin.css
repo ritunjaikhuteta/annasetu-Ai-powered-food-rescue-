@@ -1,0 +1,101 @@
+/**
+ * AnnaSetu — Admin Operations Console Styles
+ */
+.admin-shell {
+  min-height: 100vh;
+  display: flex;
+  background: #f4f6f3;
+  color: var(--ink);
+  font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
+}
+
+.admin-sidebar {
+  width: 260px;
+  background: #11281d;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.admin-sidebar-header {
+  padding: 24px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-nav {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.admin-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 8px;
+  color: #a4b8ab;
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.15s ease;
+  background: transparent;
+  border: 0;
+}
+
+.admin-nav-item:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.admin-nav-item.active {
+  background: #255239;
+  color: #fff;
+  font-weight: 600;
+}
+
+.admin-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.admin-topbar {
+  height: 64px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid #e1e7dc;
+  background: #fff;
+}
+
+.admin-content {
+  padding: 32px;
+  max-width: 1400px;
+  width: 100%;
+}
+
+.admin-card {
+  background: #fff;
+  border: 1px solid #e1e7dc;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+}
+
+@media (max-width: 768px) {
+  .admin-shell {
+    flex-direction: column;
+  }
+  .admin-sidebar {
+    width: 100%;
+  }
+  .admin-content {
+    padding: 16px;
+  }
+}

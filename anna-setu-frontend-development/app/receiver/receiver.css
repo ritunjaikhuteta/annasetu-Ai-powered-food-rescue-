@@ -1,0 +1,100 @@
+/**
+ * AnnaSetu — Receiver Workspace Styles
+ */
+.receiver-shell {
+  min-height: 100vh;
+  display: flex;
+  background: var(--cream);
+  color: var(--ink);
+}
+
+.receiver-sidebar {
+  width: 250px;
+  background: var(--paper);
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.receiver-sidebar-header {
+  padding: 24px 20px;
+  border-bottom: 1px solid var(--line);
+}
+
+.receiver-nav {
+  padding: 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.receiver-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 9px;
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 13px;
+  transition: all 0.15s ease;
+}
+
+.receiver-nav-item:hover {
+  background: #f1f5ec;
+  color: var(--green);
+}
+
+.receiver-nav-item.active {
+  background: var(--green);
+  color: #fff;
+  font-weight: 600;
+}
+
+.receiver-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-y: auto;
+}
+
+.receiver-topbar {
+  height: 68px;
+  padding: 0 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  background: var(--paper);
+}
+
+.receiver-content {
+  padding: 32px;
+  max-width: 1200px;
+  width: 100%;
+}
+
+.receiver-card {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 24px;
+  box-shadow: 0 4px 16px rgba(23, 61, 43, 0.03);
+}
+
+@media (max-width: 768px) {
+  .receiver-shell {
+    flex-direction: column;
+  }
+  .receiver-sidebar {
+    width: 100%;
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .receiver-content {
+    padding: 16px;
+  }
+}
