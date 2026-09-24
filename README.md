@@ -66,3 +66,17 @@ npm run dev
 - **AI Matching & Verification**: Multimodal image verification for food integrity and priority scoring algorithms.
 - **Verified Handoffs**: Chain-of-custody verification via OTP confirmation and GPS checkpoint logging.
 - **Real-time Operations**: Live rescue tracking and status transitions across the journey from kitchen to meal.
+
+---
+
+## 🌐 Vercel Deployment (Frontend)
+
+When deploying this monorepo to Vercel:
+
+1. In the Vercel Dashboard, go to **Settings** > **General**.
+2. Under **Root Directory**, click **Edit** and set it to:
+   ```text
+   anna-setu-frontend-development
+   ```
+3. Click **Save**.
+4. Trigger a new deployment or click **Redeploy**. Vercel will automatically detect `Next.js 16`, install dependencies, and build the application cleanly.

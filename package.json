@@ -1,0 +1,17 @@
+{
+  "name": "annasetu-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "workspaces": [
+    "anna-setu-frontend-development"
+  ],
+  "scripts": {
+    "dev": "npm run dev --prefix anna-setu-frontend-development",
+    "build": "npm run build --prefix anna-setu-frontend-development",
+    "start": "npm run start --prefix anna-setu-frontend-development",
+    "vercel-build": "npm run build --prefix anna-setu-frontend-development"
+  },
+  "dependencies": {
+    "next": "16.3.3"
+  }
+}
