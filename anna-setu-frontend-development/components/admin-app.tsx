@@ -1354,6 +1354,18 @@ export default function AdminApp({ path = '/admin/dashboard' }: { path?: string 
               <div>AI Visual Signal: {selectedIntegrityCheck.ai_reason || 'Score: ' + (selectedIntegrityCheck.ai_integrity_score || 'N/A')}</div>
             </div>
 
+            <div className="p-2.5 rounded bg-emerald-50/60 border border-emerald-200 text-xs space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="font-bold text-[#2f5536] flex items-center gap-1">
+                  <Sparkles size={13} /> Visual Food Quality / Integrity AI
+                </span>
+                <span className="text-[10px] text-gray-500 uppercase font-semibold">Non-Authoritative</span>
+              </div>
+              <p className="text-[11px] text-gray-600">
+                Visual inspection signals aid review. AI does not certify food safety or compliance.
+              </p>
+            </div>
+
             <div>
               <label className="text-xs font-bold text-gray-700 block mb-1">Review Outcome Notes</label>
               <textarea

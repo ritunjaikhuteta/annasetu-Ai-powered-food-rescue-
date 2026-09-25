@@ -118,3 +118,53 @@ class ExplanationResponse(BaseModel):
     explanation_text: str
     is_ai_generated: bool = False
     facts: Dict[str, Any] = Field(default_factory=dict)
+
+
+class FreshnessSignal(str, Enum):
+    GOOD = "GOOD"
+    FAIR = "FAIR"
+    CONCERN = "CONCERN"
+    UNKNOWN = "UNKNOWN"
+
+
+class PackagingCondition(str, Enum):
+    GOOD = "GOOD"
+    FAIR = "FAIR"
+    POOR = "POOR"
+    NOT_VISIBLE = "NOT_VISIBLE"
+
+
+class ImageQualitySignal(str, Enum):
+    GOOD = "GOOD"
+    FAIR = "FAIR"
+    INSUFFICIENT = "INSUFFICIENT"
+
+
+class QualityRecommendation(str, Enum):
+    VISUAL_REVIEW_PASS = "VISUAL_REVIEW_PASS"
+    MANUAL_REVIEW = "MANUAL_REVIEW"
+    INSUFFICIENT_IMAGE = "INSUFFICIENT_IMAGE"
+
+
+class FoodQualityAssessment(BaseModel):
+    """Structured visual assessment of surplus food image. Non-authoritative."""
+    donation_id: Optional[str] = None
+    food_identified: Optional[str] = None
+    visual_quality_score: int = Field(..., ge=0, le=100, description="Visual Quality Score from 0 to 100")
+    freshness_signal: FreshnessSignal = FreshnessSignal.UNKNOWN
+    packaging_condition: PackagingCondition = PackagingCondition.NOT_VISIBLE
+    image_quality: ImageQualitySignal = ImageQualitySignal.FAIR
+    visible_concerns: List[str] = Field(default_factory=list)
+    risk_flags: List[str] = Field(default_factory=list)
+    confidence: int = Field(..., ge=0, le=100)
+    recommendation: QualityRecommendation = QualityRecommendation.MANUAL_REVIEW
+    explanation: str = ""
+    disclaimer: str = "Visual AI observation only. Not a food safety certification or shelf-life guarantee."
+    is_cached: bool = False
+    provider: str = "gemini"
+    analyzed_at: Optional[str] = None
+
+
+class FoodQualityCheckRequest(BaseModel):
+    image_url: Optional[str] = None
+    image_base64: Optional[str] = None

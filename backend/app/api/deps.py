@@ -1,6 +1,7 @@
 """API Route Dependencies and Service Injections."""
 
 from fastapi import Depends
+from app.core.config import settings
 from app.core.dependencies import (
     get_auth_service,
     get_current_profile,
@@ -128,8 +129,24 @@ def get_ai_service(
     db: SupabaseClient = Depends(get_supabase_client),
 ) -> "AIService":
     from app.ai.service import AIService
+    from app.ai.gemini_provider import GeminiProvider
     from app.ai.groq_provider import GroqProvider
-    return AIService(db=db, provider=GroqProvider())
+
+    provider_name = settings.AI_PROVIDER.lower()
+    fallback_name = settings.AI_FALLBACK_PROVIDER.lower()
+
+    fallback_provider = None
+    if fallback_name == "groq":
+        fallback_provider = GroqProvider()
+    elif fallback_name == "gemini":
+        fallback_provider = GeminiProvider()
+
+    if provider_name == "gemini":
+        provider = GeminiProvider(fallback_provider=fallback_provider)
+    else:
+        provider = GroqProvider()
+
+    return AIService(db=db, provider=provider)
 
 
 def get_admin_service(

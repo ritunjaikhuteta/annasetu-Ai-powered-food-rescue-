@@ -15,6 +15,7 @@ import re
 import time
 from typing import Any, Dict, List, Optional, Tuple
 import uuid
+import httpx
 from app.ai.groq_provider import GroqProvider
 from app.ai.provider import AIProvider
 from app.ai.schemas import (
@@ -27,12 +28,13 @@ from app.ai.schemas import (
     ExplanationResponse,
     ExtractedDocumentFields,
     FoodNormalizationResponse,
+    FoodQualityAssessment,
     NeedAIAssistResponse,
 )
 from app.core.config import settings
 from app.db.supabase import SupabaseClient
 from app.services.audit_service import AuditService
-from app.utils.exceptions import AppException, NotFoundException, ValidationException
+from app.utils.exceptions import AppException, ForbiddenException, NotFoundException, ValidationException
 
 logger = logging.getLogger("annasetu.ai.service")
 
@@ -733,3 +735,184 @@ class AIService:
             is_ai_generated=getattr(self.provider, "is_available", False),
             facts=facts,
         )
+
+    # =========================================================================
+    # 7. VISUAL FOOD QUALITY ASSESSMENT (PHASE 21)
+    # =========================================================================
+
+    async def analyze_donation_food_quality(
+        self,
+        donation_id: str,
+        user_id: str,
+        user_role: str,
+        raw_image_bytes: Optional[bytes] = None,
+        mime_type: Optional[str] = None,
+        image_url: Optional[str] = None,
+        force_refresh: bool = False,
+    ) -> FoodQualityAssessment:
+        """Analyzes surplus food photo using visual AI observations.
+        
+        CRITICAL ARCHITECTURAL CONSTRAINTS:
+        - Authoritative logic remains with deterministic rules & manual inspectors.
+        - AI provides VISUAL QUALITY SCORE (0-100), visual signals, and manual review recommendations.
+        - AI does NOT certify microbiological food safety, legal compliance, or expiry.
+        - AI does NOT approve or reject donations.
+        - Authorized callers: Donation donor owner or platform Admin.
+        """
+        # 1. Fetch donation record
+        donation = await self.db.get_by_id("donations", donation_id, id_column="id")
+        if not donation:
+            raise NotFoundException(f"Donation {donation_id} not found.")
+
+        # 2. Authorization check: Donor owner or Admin
+        is_admin = user_role.upper() == "ADMIN"
+        is_owner = str(donation.get("donor_id")) == str(user_id)
+        if not (is_admin or is_owner):
+            raise ForbiddenException("Only the donation owner or an administrator can request AI food quality assessment.")
+
+        # 3. Rate limiting per user
+        ai_rate_limiter.check_rate_limit(f"quality_{user_id}")
+
+        # 4. Check for cached assessment if image source is unchanged and force_refresh is False
+        target_image_ref = image_url or donation.get("image_path")
+        if not force_refresh and not raw_image_bytes and donation.get("visual_quality_assessment"):
+            cached_data = donation["visual_quality_assessment"]
+            if isinstance(cached_data, dict) and cached_data.get("visual_quality_score") is not None:
+                cached_src = cached_data.get("_image_source")
+                if not cached_src or cached_src == target_image_ref:
+                    cached_copy = dict(cached_data)
+                    cached_copy["is_cached"] = True
+                    cached_copy.pop("_image_source", None)
+                    logger.info("Returning cached visual food quality assessment for donation %s", donation_id)
+                    return FoodQualityAssessment(**cached_copy)
+
+        # 5. Obtain image bytes
+        img_bytes: Optional[bytes] = None
+        detected_mime = mime_type or "image/jpeg"
+
+        if raw_image_bytes:
+            img_bytes = raw_image_bytes
+        elif target_image_ref:
+            if target_image_ref.startswith("data:image/"):
+                import base64
+                header, encoded = target_image_ref.split(",", 1)
+                detected_mime = header.split(";")[0].replace("data:", "")
+                img_bytes = base64.b64decode(encoded)
+            elif target_image_ref.startswith("http://") or target_image_ref.startswith("https://"):
+                try:
+                    async with httpx.AsyncClient(timeout=10.0) as client:
+                        resp = await client.get(target_image_ref)
+                        if resp.status_code == 200:
+                            img_bytes = resp.content
+                            detected_mime = resp.headers.get("content-type") or detected_mime
+                        else:
+                            raise ValidationException(f"Failed to fetch food image from URL (HTTP {resp.status_code}).")
+                except httpx.RequestError as exc:
+                    raise ValidationException(f"Network error downloading food image: {str(exc)}")
+            else:
+                # Relative Supabase storage path
+                supabase_url = settings.SUPABASE_URL.rstrip("/") if settings.SUPABASE_URL else ""
+                if supabase_url:
+                    full_url = f"{supabase_url}/storage/v1/object/public/donation-images/{target_image_ref.lstrip('/')}"
+                    try:
+                        async with httpx.AsyncClient(timeout=10.0) as client:
+                            resp = await client.get(full_url)
+                            if resp.status_code == 200:
+                                img_bytes = resp.content
+                                detected_mime = resp.headers.get("content-type") or detected_mime
+                    except Exception as exc:
+                        logger.warning("Could not download image from Supabase storage: %s", exc)
+
+        if not img_bytes:
+            raise ValidationException("No valid food image found for visual analysis. Please upload or specify an image.")
+
+        # Size check (max 10MB)
+        if len(img_bytes) > 10 * 1024 * 1024:
+            raise ValidationException("Food image file exceeds maximum allowed size of 10MB.")
+
+        # Clean mime
+        clean_mime = detected_mime.split(";")[0].strip().lower()
+        if clean_mime not in ("image/jpeg", "image/png", "image/webp", "image/jpg"):
+            clean_mime = "image/jpeg"
+
+        # 6. Prepare context details
+        context = {
+            "donation_id": donation_id,
+            "raw_description": donation.get("raw_description"),
+            "diet_type": donation.get("diet_type"),
+            "storage_condition": donation.get("storage_condition"),
+            "packaging_type": donation.get("packaging_type"),
+            "declared_quantity_kg": donation.get("declared_quantity_kg"),
+        }
+
+        # 7. Audit log analysis request
+        await self.audit.log_event(
+            action="FOOD_QUALITY_ANALYSIS_REQUESTED",
+            entity_type="donations",
+            entity_id=donation_id,
+            user_id=user_id,
+            new_values={"image_source": target_image_ref or "direct_upload"},
+        )
+
+        # 8. Call AI Provider
+        raw_result = await self.provider.analyze_food_quality(
+            image_bytes=img_bytes,
+            mime_type=clean_mime,
+            context=context,
+        )
+
+        # 9. Format FoodQualityAssessment response
+        now_iso = datetime.now(timezone.utc).isoformat()
+        score = int(raw_result.get("visual_quality_score", 70))
+        score = max(0, min(100, score))
+        confidence = int(raw_result.get("confidence", 50))
+        confidence = max(0, min(100, confidence))
+
+        assessment = FoodQualityAssessment(
+            donation_id=donation_id,
+            food_identified=raw_result.get("food_identified"),
+            visual_quality_score=score,
+            freshness_signal=raw_result.get("freshness_signal", "UNKNOWN"),
+            packaging_condition=raw_result.get("packaging_condition", "NOT_VISIBLE"),
+            image_quality=raw_result.get("image_quality", "FAIR"),
+            visible_concerns=raw_result.get("visible_concerns", []),
+            risk_flags=raw_result.get("risk_flags", []),
+            confidence=confidence,
+            recommendation=raw_result.get("recommendation", "MANUAL_REVIEW"),
+            explanation=raw_result.get("explanation", "Visual inspection completed."),
+            disclaimer="Visual AI observation only. Not a food safety certification or shelf-life guarantee.",
+            is_cached=False,
+            provider=raw_result.get("provider", "gemini"),
+            analyzed_at=now_iso,
+        )
+
+        # 10. Persist assessment on donation record (non-authoritative metadata)
+        storage_dict = assessment.model_dump()
+        storage_dict["_image_source"] = target_image_ref
+        try:
+            await self.db.update_by_id(
+                "donations",
+                donation_id,
+                {
+                    "visual_quality_assessment": storage_dict,
+                    "updated_at": now_iso,
+                },
+            )
+        except Exception as exc:
+            logger.warning("Could not update donation with visual_quality_assessment: %s", exc)
+
+        # 11. Audit log completion
+        await self.audit.log_event(
+            action="FOOD_QUALITY_ANALYSIS_COMPLETED",
+            entity_type="donations",
+            entity_id=donation_id,
+            user_id=user_id,
+            new_values={
+                "visual_quality_score": score,
+                "freshness_signal": assessment.freshness_signal.value,
+                "recommendation": assessment.recommendation.value,
+                "provider": assessment.provider,
+            },
+        )
+
+        return assessment

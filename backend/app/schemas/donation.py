@@ -83,5 +83,6 @@ class DonationResponse(BaseModel):
     image_path: Optional[str] = None
     pickup_location_id: str
     status: DonationStatus
+    visual_quality_assessment: Optional[dict] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None

@@ -8,6 +8,7 @@ import { ArrowLeft, ArrowRight, Award, BadgeCheck, Bell, Bike, CalendarDays, Che
 import { donorService } from '@/lib/services/donor'
 import { subscriptionApi } from '@/lib/api/subscription'
 import type { DonorDonation, DonorStatus } from '@/lib/types/donor'
+import type { FoodQualityAssessment } from '@/lib/api/donation'
 import { useAuth } from '@/lib/auth/context'
 
 const data = donorService.getData()
@@ -199,6 +200,9 @@ function NewDonation() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [mismatchDismissed, setMismatchDismissed] = useState(false);
   const [generatedSuccess, setGeneratedSuccess] = useState(false);
+  const [qualityAssessment, setQualityAssessment] = useState<FoodQualityAssessment | null>(null);
+  const [analyzingQuality, setAnalyzingQuality] = useState(false);
+  const [qualityError, setQualityError] = useState<string | null>(null);
 
   // Step 4 GPS Location
   const [address, setAddress] = useState('Plot 14, Ashok Nagar, C-Scheme');
@@ -254,13 +258,31 @@ function NewDonation() {
     );
   };
 
+  const handleAnalyzeFoodQuality = async (imgData?: string) => {
+    const targetImage = imgData || imagePreview;
+    if (!targetImage) return;
+    setAnalyzingQuality(true);
+    setQualityError(null);
+    try {
+      const assessment = await donorService.checkFoodQuality('draft-new', targetImage);
+      setQualityAssessment(assessment);
+      setVision(true);
+    } catch (err: any) {
+      setQualityError(err.message || 'AI visual assessment failed.');
+    } finally {
+      setAnalyzingQuality(false);
+    }
+  };
+
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => {
-        setImagePreview(event.target?.result as string);
+        const dataUrl = event.target?.result as string;
+        setImagePreview(dataUrl);
         setVision(true);
+        handleAnalyzeFoodQuality(dataUrl);
       };
       reader.readAsDataURL(file);
     }
@@ -479,57 +501,117 @@ function NewDonation() {
                 )}
               </div>
 
-              {vision && (
-                <div className="food-vision">
-                  <div className="vision-head">
-                    <Sparkles size={17} />
-                    <strong>Food Vision AI</strong>
-                    <span>Visual assistance</span>
-                  </div>
-                  <div className="vision-grid">
-                    <span>Cooked meal surplus<small>Likely category: {category}</small></span>
-                    <span>{foodType}-looking<small>Estimated quantity: ~{qty} kg</small></span>
-                    <b>94%<small>confidence</small></b>
-                  </div>
-                  {!mismatchDismissed && (
-                    <div className="mismatch">
-                      <strong>AI verification check</strong>
-                      <span>Visual review matches declared {category} ({foodType}). Your declared quantity ({qty} kg) remains authoritative.</span>
-                      <div>
-                        <button
-                          type="button"
-                          onClick={() => setMismatchDismissed(true)}
-                          className="font-bold bg-[#e8efe2] text-[#2f5536]"
-                        >
-                          Confirm
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setStep(1)}
-                        >
-                          Edit
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setMismatchDismissed(true)}
-                        >
-                          Ignore
-                        </button>
-                      </div>
+              {/* Gemini AI Visual Food Quality Assessment (Phase 21) */}
+              <div className="mt-4 p-4 rounded-xl border border-[#c3d6bc] bg-[#f9fbf8] shadow-sm space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <div className="w-7 h-7 rounded-lg bg-[#2f5536] text-white flex items-center justify-center">
+                      <Sparkles size={16} />
                     </div>
+                    <div>
+                      <strong className="text-sm text-gray-900 block font-bold">Visual Food Quality AI</strong>
+                      <span className="text-[11px] text-gray-500">Powered by Google Gemini · Non-authoritative visual inspection</span>
+                    </div>
+                  </div>
+                  {imagePreview && (
+                    <button
+                      type="button"
+                      disabled={analyzingQuality}
+                      onClick={() => handleAnalyzeFoodQuality()}
+                      className="px-2.5 py-1 text-xs font-semibold rounded bg-[#2f5536] text-white hover:bg-[#25442b] disabled:opacity-50 transition flex items-center gap-1"
+                    >
+                      <Sparkles size={12} />
+                      {analyzingQuality ? 'Analyzing...' : qualityAssessment ? 'Re-analyze' : 'Analyze Image'}
+                    </button>
                   )}
                 </div>
-              )}
 
-              {!vision && (
-                <button
-                  type="button"
-                  className="button button-dark full-width mt-3"
-                  onClick={() => setVision(true)}
-                >
-                  Process visual assistance <Sparkles size={16} />
-                </button>
-              )}
+                {analyzingQuality && (
+                  <div className="py-4 text-center text-xs text-gray-600 flex items-center justify-center gap-2 bg-white rounded-lg border border-dashed border-[#c3d6bc]">
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-[#2f5536] border-t-transparent" />
+                    <span>Analyzing food photo with Google Gemini...</span>
+                  </div>
+                )}
+
+                {qualityError && (
+                  <div className="p-2.5 bg-red-50 border border-red-200 rounded text-xs text-red-700">
+                    {qualityError}
+                  </div>
+                )}
+
+                {qualityAssessment && !analyzingQuality && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-[#e2ece0]">
+                      <div>
+                        <span className="text-[11px] font-bold uppercase tracking-wider text-gray-500 block">VISUAL QUALITY SCORE</span>
+                        <span className="text-2xl font-extrabold text-[#2f5536]">
+                          {qualityAssessment.visual_quality_score}<span className="text-sm font-normal text-gray-500">/100</span>
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-[11px] text-gray-500 block">Visual Recommendation</span>
+                        <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-bold ${
+                          qualityAssessment.recommendation === 'VISUAL_REVIEW_PASS'
+                            ? 'bg-emerald-100 text-emerald-800'
+                            : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {qualityAssessment.recommendation === 'VISUAL_REVIEW_PASS' ? '✓ VISUAL PASS' : '⚠️ MANUAL REVIEW'}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      <div className="bg-white p-2 rounded border border-gray-100">
+                        <span className="text-[10px] text-gray-500 block uppercase">Freshness</span>
+                        <strong className="text-gray-800 font-semibold">{qualityAssessment.freshness_signal}</strong>
+                      </div>
+                      <div className="bg-white p-2 rounded border border-gray-100">
+                        <span className="text-[10px] text-gray-500 block uppercase">Packaging</span>
+                        <strong className="text-gray-800 font-semibold">{qualityAssessment.packaging_condition}</strong>
+                      </div>
+                      <div className="bg-white p-2 rounded border border-gray-100">
+                        <span className="text-[10px] text-gray-500 block uppercase">Image Clarity</span>
+                        <strong className="text-gray-800 font-semibold">{qualityAssessment.image_quality}</strong>
+                      </div>
+                      <div className="bg-white p-2 rounded border border-gray-100">
+                        <span className="text-[10px] text-gray-500 block uppercase">Confidence</span>
+                        <strong className="text-gray-800 font-semibold">{qualityAssessment.confidence}%</strong>
+                      </div>
+                    </div>
+
+                    {qualityAssessment.explanation && (
+                      <div className="text-xs text-gray-700 bg-white p-2.5 rounded border border-gray-100">
+                        <p>{qualityAssessment.explanation}</p>
+                      </div>
+                    )}
+
+                    {qualityAssessment.visible_concerns && qualityAssessment.visible_concerns.length > 0 && (
+                      <div className="text-xs bg-amber-50 border border-amber-200 p-2.5 rounded text-amber-900">
+                        <strong>Visible Observations:</strong>
+                        <ul className="list-disc pl-4 mt-1 space-y-0.5">
+                          {qualityAssessment.visible_concerns.map((c, i) => (
+                            <li key={i}>{c}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {/* Mandatory Non-Certification Disclaimer Banner */}
+                    <div className="p-2.5 bg-amber-50/80 border border-amber-200/70 rounded-md text-[11px] text-amber-900 flex items-start gap-1.5">
+                      <ShieldCheck size={14} className="text-amber-700 mt-0.5 shrink-0" />
+                      <span>
+                        <strong>Notice:</strong> {qualityAssessment.disclaimer || 'Visual AI observation only. Not a food safety certification or shelf-life guarantee. Donor-declared quantity remains authoritative.'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {!imagePreview && (
+                  <p className="text-xs text-gray-500 italic">
+                    Upload or take a photo above to run AI visual quality check.
+                  </p>
+                )}
+              </div>
 
               <div className="description-generator">
                 <Sparkles size={17} />

@@ -26,8 +26,32 @@ export interface DonationResponse {
   image_path?: string
   pickup_location_id: string
   status: DonationStatus
+  visual_quality_assessment?: FoodQualityAssessment
   created_at?: string
   updated_at?: string
+}
+
+export interface FoodQualityAssessment {
+  donation_id?: string
+  food_identified?: string
+  visual_quality_score: number
+  freshness_signal: 'GOOD' | 'FAIR' | 'CONCERN' | 'UNKNOWN'
+  packaging_condition: 'GOOD' | 'FAIR' | 'POOR' | 'NOT_VISIBLE'
+  image_quality: 'GOOD' | 'FAIR' | 'INSUFFICIENT'
+  visible_concerns: string[]
+  risk_flags: string[]
+  confidence: number
+  recommendation: 'VISUAL_REVIEW_PASS' | 'MANUAL_REVIEW' | 'INSUFFICIENT_IMAGE'
+  explanation: string
+  disclaimer: string
+  is_cached?: boolean
+  provider?: string
+  analyzed_at?: string
+}
+
+export interface FoodQualityCheckPayload {
+  image_url?: string
+  image_base64?: string
 }
 
 export interface DonationCreatePayload {
@@ -101,6 +125,14 @@ export const donationApi = {
   async cancelDonation(donationId: string): Promise<DonationResponse> {
     return apiClient<DonationResponse>(`/api/v1/donations/${donationId}/cancel`, {
       method: 'POST',
+    })
+  },
+
+  /** Run AI visual quality check on donation image */
+  async checkFoodQuality(donationId: string, payload?: FoodQualityCheckPayload): Promise<FoodQualityAssessment> {
+    return apiClient<FoodQualityAssessment>(`/api/v1/donations/${donationId}/ai-quality-check`, {
+      method: 'POST',
+      body: payload ? JSON.stringify(payload) : undefined,
     })
   },
 }

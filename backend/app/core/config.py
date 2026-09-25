@@ -31,10 +31,13 @@ class Settings(BaseSettings):
     MIN_WALLET_TOPUP_INR: float = 10.0
 
     AI_PROVIDER: str = "groq"
+    AI_FALLBACK_PROVIDER: str = "none"
     AI_ENABLED: bool = True
     GROQ_API_KEY: str = ""
     GROQ_MODEL: str = "llama-3.3-70b-versatile"
     GROQ_VISION_MODEL: str = "llama-3.2-11b-vision-preview"
+    GEMINI_API_KEY: str = ""
+    GEMINI_MODEL: str = "gemini-2.5-flash"
     AI_REQUEST_TIMEOUT_SECONDS: float = 10.0
     AI_MAX_RETRIES: int = 1
 

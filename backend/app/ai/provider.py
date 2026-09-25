@@ -63,3 +63,22 @@ class AIProvider(ABC):
             Dict containing integrity_score, tampering_signal, reason, available.
         """
         pass
+
+    @abstractmethod
+    async def analyze_food_quality(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Analyzes surplus food image for visual quality signals (appearance, packaging, visible concerns).
+        
+        Args:
+            image_bytes: Raw binary image payload.
+            mime_type: MIME type (image/jpeg, image/png, image/webp).
+            context: Optional contextual details (e.g. food title, claimed category).
+            
+        Returns:
+            Dict conforming to FoodQualityAssessment schema.
+        """
+        pass

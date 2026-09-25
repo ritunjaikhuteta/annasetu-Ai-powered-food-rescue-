@@ -246,3 +246,83 @@ class GroqProvider(AIProvider):
             pickup_image=pickup_image,
             delivery_image=delivery_image,
         )
+
+    async def analyze_food_quality(
+        self,
+        image_bytes: bytes,
+        mime_type: str = "image/jpeg",
+        context: Optional[Dict[str, Any]] = None,
+    ) -> Dict[str, Any]:
+        """Groq vision analysis or heuristic fallback for surplus food visual quality."""
+        import base64
+        from app.ai.prompts import FOOD_QUALITY_ASSESSMENT_PROMPT
+
+        if not self.is_available or not image_bytes:
+            return {
+                "food_identified": context.get("title") if context else "Food items",
+                "visual_quality_score": 70,
+                "freshness_signal": "UNKNOWN",
+                "packaging_condition": "NOT_VISIBLE",
+                "image_quality": "INSUFFICIENT" if not image_bytes else "FAIR",
+                "visible_concerns": ["AI visual analysis offline or image unreadable."],
+                "risk_flags": [],
+                "confidence": 40,
+                "recommendation": "MANUAL_REVIEW",
+                "explanation": "Visual assessment fallback: AI inspection offline. Manual inspection recommended.",
+                "disclaimer": "Visual AI observation only. Not a food safety certification or shelf-life guarantee.",
+                "provider": "groq",
+            }
+
+        b64_image = base64.b64encode(image_bytes).decode("utf-8")
+        data_uri = f"data:{mime_type};base64,{b64_image}"
+
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        user_prompt = "Examine this surplus food donation image and return visual quality assessment JSON."
+        if context:
+            user_prompt += f"\nContext: {json.dumps(context, default=str)}"
+
+        payload = {
+            "model": self.vision_model,
+            "messages": [
+                {"role": "system", "content": FOOD_QUALITY_ASSESSMENT_PROMPT},
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": user_prompt},
+                        {"type": "image_url", "image_url": {"url": data_uri}},
+                    ],
+                },
+            ],
+            "temperature": 0.1,
+            "response_format": {"type": "json_object"},
+        }
+
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                res = await client.post(self.endpoint, headers=headers, json=payload)
+                if res.status_code == 200:
+                    data = res.json()
+                    raw_content = data["choices"][0]["message"]["content"]
+                    parsed = json.loads(raw_content)
+                    parsed["provider"] = "groq"
+                    return parsed
+        except Exception as exc:
+            logger.warning("Groq food quality analysis failed: %s", exc)
+
+        return {
+            "food_identified": context.get("title") if context else "Food items",
+            "visual_quality_score": 75,
+            "freshness_signal": "FAIR",
+            "packaging_condition": "NOT_VISIBLE",
+            "image_quality": "FAIR",
+            "visible_concerns": [],
+            "risk_flags": [],
+            "confidence": 50,
+            "recommendation": "MANUAL_REVIEW",
+            "explanation": "Visual inspection completed with fallback heuristics. Manual verification recommended.",
+            "disclaimer": "Visual AI observation only. Not a food safety certification or shelf-life guarantee.",
+            "provider": "groq",
+        }

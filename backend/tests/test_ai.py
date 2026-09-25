@@ -1,7 +1,7 @@
 """Unit and Integration Tests for Phase 16: AnnaSetu AI Assistance, OCR & Document Intelligence."""
 
 from datetime import datetime, timedelta, timezone
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 from unittest.mock import AsyncMock, patch
 import pytest
 from fastapi.testclient import TestClient
@@ -52,6 +52,22 @@ class MockCustomAIProvider(AIProvider):
             "tampering_signal": False,
             "reason": "Package intact.",
             "available": True,
+        }
+
+    async def analyze_food_quality(self, image_bytes: bytes, mime_type: str = "image/jpeg", context: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        return {
+            "food_identified": "Dal & Rice",
+            "visual_quality_score": 85,
+            "freshness_signal": "GOOD",
+            "packaging_condition": "GOOD",
+            "image_quality": "GOOD",
+            "visible_concerns": [],
+            "risk_flags": [],
+            "confidence": 90,
+            "recommendation": "VISUAL_REVIEW_PASS",
+            "explanation": "Test provider assessment.",
+            "disclaimer": "Visual AI observation only. Not a food safety certification or shelf-life guarantee.",
+            "provider": "mock",
         }
 
 

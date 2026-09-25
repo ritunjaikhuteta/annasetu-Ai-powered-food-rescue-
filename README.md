@@ -67,6 +67,7 @@ npm run dev
 ## 🌟 Key Features
 
 - **Role-Based Workspaces**: Specialized portals for Donors, Receivers (NGOs/Shelters), Delivery Partners, and Admins.
+- **AI-Powered Visual Food Quality Assessment (Google Gemini)**: Multimodal visual inspection of surplus food photos during donation creation using the official `google-genai` SDK. Outputs structured Visual Quality Scores (0-100), freshness signals, packaging conditions, and manual review recommendations while keeping deterministic backend business logic strictly authoritative.
 - **AI Matching & Verification**: Multimodal image verification for food integrity and priority scoring algorithms.
 - **Verified Handoffs**: Chain-of-custody verification via OTP confirmation and GPS checkpoint logging.
 - **Real-time Operations**: Live rescue tracking and status transitions across the journey from kitchen to meal.
